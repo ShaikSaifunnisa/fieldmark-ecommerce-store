@@ -1,1 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Account — FIELDMARK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .acct-wrap { padding: 48px 0 100px; }
+  .acct-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 36px; border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+  .acct-head h1 { font-size: 28px; margin-bottom: 6px; }
+  .acct-head p { color: #6b6858; font-size: 14px; margin: 0; }
+  .logout-btn { border: 1px solid var(--charcoal); background: none; padding: 10px 18px; font-size: 13.5px; }
+  .logout-btn:hover { background: var(--charcoal); color: var(--paper); }
+  .order-card { border: 1px solid var(--line); padding: 20px 22px; margin-bottom: 16px; }
+  .order-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; font-size: 14px; }
+  .order-top .order-id { font-weight: 600; }
+  .order-top .order-date { color: #6b6858; }
+  .order-line { display: flex; justify-content: space-between; font-size: 14px; padding: 5px 0; color: #4a473f; }
+  .order-total { display: flex; justify-content: space-between; font-weight: 600; padding-top: 10px; margin-top: 8px; border-top: 1px solid var(--line-soft); }
+  .no-orders, .signed-out { text-align: center; padding: 60px 0; color: #6b6858; }
+</style>
+</head>
+<body>
 
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="logo">FIELD<span>MARK</span></a>
+    <nav class="main-nav">
+      <a href="shop.html">Shop All</a>
+      <a href="shop.html?cat=Backpacks">Backpacks</a>
+      <a href="shop.html?cat=Jackets">Jackets</a>
+      <a href="shop.html?cat=Footwear">Footwear</a>
+      <a href="about.html">Our Story</a>
+    </nav>
+    <div class="header-actions">
+      <a href="account.html" class="account-link" id="auth-slot">Login</a>
+      <a href="cart.html" class="cart-link">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<main class="wrap acct-wrap" id="acct-root">
+  <div class="signed-out">Loading account…</div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 FIELDMARK Outdoor Co.</span>
+      <span>Made for the trail, built to last.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  const root = document.getElementById("acct-root");
+
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      root.innerHTML = `
+        <div class="signed-out">
+          <h1 style="font-size:24px; margin-bottom:10px;">You're not logged in</h1>
+          <p>Log in to see your account and order history.</p>
+          <a href="login.html" class="btn" style="margin-top:10px; display:inline-block;">Log In</a>
+        </div>
+      `;
+      return;
+    }
+
+    root.innerHTML = `
+      <div class="acct-head">
+        <div>
+          <h1>My Account</h1>
+          <p>${user.displayName || "Member"} · ${user.email}</p>
+        </div>
+        <button class="logout-btn" id="logout-btn">Log Out</button>
+      </div>
+      <h3 style="font-size:18px; margin-bottom:18px;">Order History</h3>
+      <div id="orders-list"><p style="color:#6b6858;">Loading orders…</p></div>
+    `;
+
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      logOut().then(() => location.href = "index.html");
+    });
+
+    db.collection("orders").where("uid", "==", user.uid).orderBy("createdAt", "desc").get()
+      .then(snapshot => {
+        const list = document.getElementById("orders-list");
+        if (snapshot.empty) {
+          list.innerHTML = `<div class="no-orders">No orders yet — <a href="shop.html" style="border-bottom:1px solid var(--charcoal);">start shopping</a>.</div>`;
+          return;
+        }
+        list.innerHTML = "";
+        snapshot.forEach(doc => {
+          const o = doc.data();
+          const date = o.createdAt ? o.createdAt.toDate().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Just now";
+          const lines = (o.items || []).map(i => `
+            <div class="order-line"><span>${i.name} (${i.size}) × ${i.qty}</span><span>${formatPrice(i.price * i.qty)}</span></div>
+          `).join("");
+          const card = document.createElement("div");
+          card.className = "order-card";
+          card.innerHTML = `
+            <div class="order-top">
+              <span class="order-id">Order #${doc.id.slice(0, 8).toUpperCase()}</span>
+              <span class="order-date">${date}</span>
+            </div>
+            ${lines}
+            <div class="order-total"><span>Total</span><span>${formatPrice(o.total)}</span></div>
+          `;
+          list.appendChild(card);
+        });
+      })
+      .catch(err => {
+        document.getElementById("orders-list").innerHTML = `<p style="color:#6b6858;">Couldn't load orders: ${err.message}</p>`;
+      });
+  });
+</script>
+</body>
+</html>
