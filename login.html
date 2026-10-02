@@ -1,1 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login — FIELDMARK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .auth-wrap { max-width: 420px; margin: 0 auto; padding: 64px 28px 100px; }
+  .auth-tabs { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 30px; }
+  .auth-tab { flex: 1; text-align: center; padding: 12px 0; font-size: 14.5px; font-weight: 600; color: #6b6858; border-bottom: 2px solid transparent; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; }
+  .auth-tab.active { color: var(--charcoal); border-bottom-color: var(--rust); }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+  .field-row { margin-bottom: 18px; }
+  .field-row label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+  .field-row input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); background: var(--paper); font-size: 14.5px; }
+  .field-row input:focus { outline: 1px solid var(--charcoal); }
+  .auth-error { color: var(--rust-dark); font-size: 13.5px; margin-bottom: 16px; display: none; }
+  .auth-error.show { display: block; }
+  .auth-note { font-size: 13px; color: #6b6858; margin-top: 18px; text-align: center; }
+  .setup-notice { background: var(--stone); border: 1px solid var(--line); padding: 14px 16px; font-size: 13px; margin-bottom: 28px; display: none; }
+  .setup-notice.show { display: block; }
+</style>
+</head>
+<body>
 
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="logo">FIELD<span>MARK</span></a>
+    <nav class="main-nav">
+      <a href="shop.html">Shop All</a>
+      <a href="shop.html?cat=Backpacks">Backpacks</a>
+      <a href="shop.html?cat=Jackets">Jackets</a>
+      <a href="shop.html?cat=Footwear">Footwear</a>
+      <a href="about.html">Our Story</a>
+    </nav>
+    <div class="header-actions">
+      <a href="account.html" class="account-link" id="auth-slot">Login</a>
+      <a href="cart.html" class="cart-link">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<main class="auth-wrap">
+  <div class="setup-notice" id="setup-notice">
+    This site's login isn't connected to a database yet. Open <code>js/firebase-config.js</code>
+    and follow the steps in README.md to connect your free Firebase project — then this form will work.
+  </div>
+
+  <div class="auth-tabs">
+    <button class="auth-tab active" data-tab="login">Log In</button>
+    <button class="auth-tab" data-tab="signup">Create Account</button>
+  </div>
+
+  <div class="auth-error" id="auth-error"></div>
+
+  <form class="auth-form active" id="login-form">
+    <div class="field-row">
+      <label>Email</label>
+      <input type="email" id="login-email" required>
+    </div>
+    <div class="field-row">
+      <label>Password</label>
+      <input type="password" id="login-password" required minlength="6">
+    </div>
+    <button type="submit" class="btn btn-block">Log In</button>
+    <p class="auth-note">New here? <a href="#" data-switch="signup" style="border-bottom:1px solid var(--charcoal);">Create an account</a></p>
+  </form>
+
+  <form class="auth-form" id="signup-form">
+    <div class="field-row">
+      <label>Full name</label>
+      <input type="text" id="signup-name" required>
+    </div>
+    <div class="field-row">
+      <label>Email</label>
+      <input type="email" id="signup-email" required>
+    </div>
+    <div class="field-row">
+      <label>Password</label>
+      <input type="password" id="signup-password" required minlength="6">
+      <p class="auth-note" style="text-align:left; margin-top:6px;">At least 6 characters.</p>
+    </div>
+    <button type="submit" class="btn btn-block">Create Account</button>
+    <p class="auth-note">Already have an account? <a href="#" data-switch="login" style="border-bottom:1px solid var(--charcoal);">Log in</a></p>
+  </form>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 FIELDMARK Outdoor Co.</span>
+      <span>Made for the trail, built to last.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    document.getElementById("setup-notice").classList.add("show");
+  }
+
+  document.querySelectorAll(".auth-tab").forEach(tab => {
+    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+  });
+  document.querySelectorAll("[data-switch]").forEach(link => {
+    link.addEventListener("click", (e) => { e.preventDefault(); switchTab(link.dataset.switch); });
+  });
+  function switchTab(name) {
+    document.querySelectorAll(".auth-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+    document.getElementById("login-form").classList.toggle("active", name === "login");
+    document.getElementById("signup-form").classList.toggle("active", name === "signup");
+    document.getElementById("auth-error").classList.remove("show");
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("auth-error");
+    el.textContent = msg;
+    el.classList.add("show");
+  }
+
+  function redirectAfterAuth() {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get("redirect");
+    location.href = redirect ? decodeURIComponent(redirect) : "account.html";
+  }
+
+  document.getElementById("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+    logIn(email, password).then(redirectAfterAuth).catch(err => showError(err.message));
+  });
+
+  document.getElementById("signup-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("signup-name").value;
+    const email = document.getElementById("signup-email").value;
+    const password = document.getElementById("signup-password").value;
+    signUp(name, email, password).then(redirectAfterAuth).catch(err => showError(err.message));
+  });
+
+  const initialTab = new URLSearchParams(location.search).get("tab");
+  if (initialTab === "signup") switchTab("signup");
+</script>
+</body>
+  </html>
