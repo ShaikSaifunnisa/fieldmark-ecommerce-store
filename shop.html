@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop All — FIELDMARK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="logo">FIELD<span>MARK</span></a>
+    <nav class="main-nav">
+      <a href="shop.html" class="active">Shop All</a>
+      <a href="shop.html?cat=Backpacks">Backpacks</a>
+      <a href="shop.html?cat=Jackets">Jackets</a>
+      <a href="shop.html?cat=Footwear">Footwear</a>
+      <a href="about.html">Our Story</a>
+    </nav>
+    <div class="header-actions">
+      <a href="cart.html" class="cart-link">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<div class="wrap breadcrumb"><a href="index.html">Home</a> / Shop</div>
+
+<main class="wrap shop-layout">
+  <aside class="filters">
+    <div class="filter-group">
+      <h4>Category</h4>
+      <label><input type="checkbox" value="Backpacks" class="cat-filter"> Backpacks</label>
+      <label><input type="checkbox" value="Jackets" class="cat-filter"> Jackets</label>
+      <label><input type="checkbox" value="Footwear" class="cat-filter"> Footwear</label>
+      <label><input type="checkbox" value="Accessories" class="cat-filter"> Accessories</label>
+    </div>
+    <div class="filter-group">
+      <h4>Price</h4>
+      <label><input type="radio" name="price" value="all" checked class="price-filter"> All prices</label>
+      <label><input type="radio" name="price" value="0-2000" class="price-filter"> Under ₹2,000</label>
+      <label><input type="radio" name="price" value="2000-5000" class="price-filter"> ₹2,000 – ₹5,000</label>
+      <label><input type="radio" name="price" value="5000-9999999" class="price-filter"> ₹5,000 and above</label>
+    </div>
+    <div class="filter-group">
+      <h4>Sort</h4>
+      <label><input type="radio" name="sort" value="featured" checked class="sort-filter"> Featured</label>
+      <label><input type="radio" name="sort" value="low" class="sort-filter"> Price: Low to High</label>
+      <label><input type="radio" name="sort" value="high" class="sort-filter"> Price: High to Low</label>
+    </div>
+  </aside>
+
+  <div>
+    <div class="page-title-row">
+      <h1 id="shop-title">Shop All</h1>
+      <span class="result-count" id="result-count"></span>
+    </div>
+    <div class="product-grid" id="shop-grid"></div>
+    <div class="empty-state" id="empty-state" style="display:none;">No products match those filters — try clearing one.</div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 FIELDMARK Outdoor Co.</span>
+      <span>Made for the trail, built to last.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const initialCat = params.get("cat");
+  if (initialCat) {
+    document.querySelectorAll(".cat-filter").forEach(cb => {
+      if (cb.value === initialCat) cb.checked = true;
+    });
+    document.getElementById("shop-title").textContent = initialCat;
+  }
+
+  function currentFilters() {
+    const cats = Array.from(document.querySelectorAll(".cat-filter:checked")).map(cb => cb.value);
+    const price = document.querySelector(".price-filter:checked").value;
+    const sort = document.querySelector(".sort-filter:checked").value;
+    return { cats, price, sort };
+  }
+
+  function applyFilters() {
+    const { cats, price, sort } = currentFilters();
+    let list = PRODUCTS.slice();
+
+    if (cats.length) {
+      list = list.filter(p => cats.includes(p.category));
+    }
+    if (price !== "all") {
+      const [min, max] = price.split("-").map(Number);
+      list = list.filter(p => p.price >= min && p.price <= max);
+    }
+    if (sort === "low") list.sort((a, b) => a.price - b.price);
+    if (sort === "high") list.sort((a, b) => b.price - a.price);
+
+    const grid = document.getElementById("shop-grid");
+    const empty = document.getElementById("empty-state");
+    document.getElementById("result-count").textContent = list.length + (list.length === 1 ? " product" : " products");
+
+    if (list.length === 0) {
+      grid.innerHTML = "";
+      empty.style.display = "block";
+    } else {
+      empty.style.display = "none";
+      renderProductCards(grid, list);
+    }
+
+    if (cats.length === 1) {
+      document.getElementById("shop-title").textContent = cats[0];
+    } else if (cats.length === 0) {
+      document.getElementById("shop-title").textContent = "Shop All";
+    } else {
+      document.getElementById("shop-title").textContent = "Shop";
+    }
+  }
+
+  document.querySelectorAll(".cat-filter, .price-filter, .sort-filter").forEach(el => {
+    el.addEventListener("change", applyFilters);
+  });
+
+  applyFilters();
+</script>
+</body>
+</html>
