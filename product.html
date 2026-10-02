@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title id="page-title">Product — FIELDMARK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="logo">FIELD<span>MARK</span></a>
+    <nav class="main-nav">
+      <a href="shop.html">Shop All</a>
+      <a href="shop.html?cat=Backpacks">Backpacks</a>
+      <a href="shop.html?cat=Jackets">Jackets</a>
+      <a href="shop.html?cat=Footwear">Footwear</a>
+      <a href="about.html">Our Story</a>
+    </nav>
+    <div class="header-actions">
+      <a href="cart.html" class="cart-link">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<div class="wrap breadcrumb" id="breadcrumb"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <span id="crumb-name"></span></div>
+
+<main class="wrap pdp" id="pdp-root">
+  <!-- filled by JS -->
+</main>
+
+<section class="wrap related">
+  <div class="section-head">
+    <h2>You may also like</h2>
+  </div>
+  <div class="product-grid" id="related-grid"></div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 FIELDMARK Outdoor Co.</span>
+      <span>Made for the trail, built to last.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const productId = params.get("id") || PRODUCTS[0].id;
+  const product = PRODUCTS.find(p => p.id === productId) || PRODUCTS[0];
+
+  document.getElementById("page-title").textContent = product.name + " — FIELDMARK";
+  document.getElementById("crumb-name").textContent = product.name;
+
+  let selectedSize = null;
+  let qty = 1;
+  let activeThumb = 0;
+  const thumbSeeds = [product.seed, product.seed + "-b", product.seed + "-c"];
+
+  function renderPDP() {
+    const root = document.getElementById("pdp-root");
+    root.innerHTML = `
+      <div class="pdp-gallery">
+        <div class="pdp-gallery-main">
+          <img id="main-image" src="${productImage(thumbSeeds[activeThumb], 700, 875)}" alt="${product.name}">
+        </div>
+        <div class="pdp-thumbs" id="thumb-row"></div>
+      </div>
+      <div class="pdp-info">
+        <div class="pdp-cat">${product.category}</div>
+        <h1>${product.name}</h1>
+        <div class="pdp-price">${formatPrice(product.price)}</div>
+        <p class="pdp-desc">${product.short}</p>
+
+        <div class="field">
+          <div class="field-label"><span>Size</span> <a href="#" style="font-weight:400; color:#6b6858;">Size guide</a></div>
+          <div class="size-grid" id="size-grid"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Quantity</div>
+          <div class="qty-row">
+            <div class="stepper">
+              <button type="button" id="qty-minus">−</button>
+              <span id="qty-display">1</span>
+              <button type="button" id="qty-plus">+</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-block" id="add-to-cart-btn">Add to cart</button>
+        <p class="pdp-note">Free shipping over ₹3,500 · Ships within 2–4 business days · 30-day returns</p>
+
+        <ul class="details-list">
+          ${product.details.map(d => `<li>${d}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+
+    const thumbRow = document.getElementById("thumb-row");
+    thumbRow.innerHTML = thumbSeeds.map((s, i) => `
+      <button type="button" class="${i === activeThumb ? 'active' : ''}" data-i="${i}">
+        <img src="${productImage(s, 150, 190)}" alt="View ${i+1}">
+      </button>
+    `).join("");
+    thumbRow.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeThumb = Number(btn.dataset.i);
+        document.getElementById("main-image").src = productImage(thumbSeeds[activeThumb], 700, 875);
+        thumbRow.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    selectedSize = product.sizes[0];
+    const sizeGrid = document.getElementById("size-grid");
+    sizeGrid.innerHTML = product.sizes.map(s => `
+      <button type="button" class="size-btn ${s === selectedSize ? 'active' : ''}" data-size="${s}">${s}</button>
+    `).join("");
+    sizeGrid.querySelectorAll(".size-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        selectedSize = btn.dataset.size;
+        sizeGrid.querySelectorAll(".size-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    document.getElementById("qty-minus").addEventListener("click", () => {
+      qty = Math.max(1, qty - 1);
+      document.getElementById("qty-display").textContent = qty;
+    });
+    document.getElementById("qty-plus").addEventListener("click", () => {
+      qty = qty + 1;
+      document.getElementById("qty-display").textContent = qty;
+    });
+
+    document.getElementById("add-to-cart-btn").addEventListener("click", () => {
+      addToCart(product.id, selectedSize, qty);
+      flashMessage(`${product.name} (${selectedSize}) added to cart`);
+    });
+  }
+
+  renderPDP();
+
+  const related = PRODUCTS.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+  renderProductCards(document.getElementById("related-grid"), related.length ? related : PRODUCTS.filter(p => p.id !== product.id).slice(0, 4));
+</script>
+</body>
+</html>
