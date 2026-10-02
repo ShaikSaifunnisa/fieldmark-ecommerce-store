@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Cart — FIELDMARK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="logo">FIELD<span>MARK</span></a>
+    <nav class="main-nav">
+      <a href="shop.html">Shop All</a>
+      <a href="shop.html?cat=Backpacks">Backpacks</a>
+      <a href="shop.html?cat=Jackets">Jackets</a>
+      <a href="shop.html?cat=Footwear">Footwear</a>
+      <a href="about.html">Our Story</a>
+    </nav>
+    <div class="header-actions">
+      <a href="cart.html" class="cart-link active">Cart <span class="cart-count" data-cart-count>0</span></a>
+    </div>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<div class="wrap breadcrumb"><a href="index.html">Home</a> / Cart</div>
+
+<main class="wrap" id="cart-root">
+  <!-- filled by JS -->
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 FIELDMARK Outdoor Co.</span>
+      <span>Made for the trail, built to last.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  const SHIPPING_THRESHOLD = 3500;
+  const SHIPPING_COST = 199;
+
+  function renderCartPage() {
+    const cart = getCart();
+    const root = document.getElementById("cart-root");
+
+    if (cart.length === 0) {
+      root.innerHTML = `
+        <div class="empty-cart">
+          <h1>Your cart is empty</h1>
+          <p>Nothing in here yet — browse the collection and find something built to last.</p>
+          <a href="shop.html" class="btn">Shop All Products</a>
+        </div>
+      `;
+      return;
+    }
+
+    const lines = cart.map(item => {
+      const p = PRODUCTS.find(pr => pr.id === item.id);
+      if (!p) return null;
+      return { ...item, product: p, lineTotal: p.price * item.qty };
+    }).filter(Boolean);
+
+    const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+    const shipping = subtotal >= SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_COST;
+    const total = subtotal + shipping;
+
+    root.innerHTML = `
+      <div class="cart-layout">
+        <div>
+          <h1 style="font-size:28px; margin-bottom: 6px;">Your Cart</h1>
+          <p style="color:#6b6858; font-size:14px; margin:0 0 10px;">${lines.length} item${lines.length === 1 ? "" : "s"}</p>
+          <div id="cart-items"></div>
+        </div>
+        <div class="summary">
+          <h3>Order Summary</h3>
+          <div class="summary-row"><span>Subtotal</span><span>${formatPrice(subtotal)}</span></div>
+          <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? "Free" : formatPrice(shipping)}</span></div>
+          ${shipping > 0 ? `<div class="summary-row" style="font-size:13px; color:#6b6858;">Add ${formatPrice(SHIPPING_THRESHOLD - subtotal)} more for free shipping</div>` : ""}
+          <div class="summary-row total"><span>Total</span><span>${formatPrice(total)}</span></div>
+          <div class="promo-row">
+            <input type="text" placeholder="Promo code">
+            <button type="button">Apply</button>
+          </div>
+          <button class="btn btn-block" id="checkout-btn">Proceed to Checkout</button>
+          <div class="confirm-box" id="confirm-box">
+            Order placed — confirmation sent to your email. (This is a demo checkout; connect a payment gateway like Razorpay or Stripe to accept real orders.)
+          </div>
+        </div>
+      </div>
+    `;
+
+    const itemsRoot = document.getElementById("cart-items");
+    itemsRoot.innerHTML = lines.map(l => `
+      <div class="cart-item">
+        <img src="${productImage(l.product.seed, 200, 240)}" alt="${l.product.name}">
+        <div>
+          <div class="cart-item-name">${l.product.name}</div>
+          <div class="cart-item-meta">Size: ${l.size}</div>
+          <div class="stepper" style="width:fit-content;">
+            <button type="button" class="qty-minus" data-id="${l.id}" data-size="${l.size}">−</button>
+            <span>${l.qty}</span>
+            <button type="button" class="qty-plus" data-id="${l.id}" data-size="${l.size}">+</button>
+          </div>
+          <a href="#" class="cart-item-remove" data-id="${l.id}" data-size="${l.size}">Remove</a>
+        </div>
+        <div class="cart-item-price">${formatPrice(l.lineTotal)}</div>
+      </div>
+    `).join("");
+
+    itemsRoot.querySelectorAll(".qty-minus").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const item = cart.find(i => i.id === btn.dataset.id && i.size === btn.dataset.size);
+        updateQty(btn.dataset.id, btn.dataset.size, item.qty - 1);
+        renderCartPage();
+      });
+    });
+    itemsRoot.querySelectorAll(".qty-plus").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const item = cart.find(i => i.id === btn.dataset.id && i.size === btn.dataset.size);
+        updateQty(btn.dataset.id, btn.dataset.size, item.qty + 1);
+        renderCartPage();
+      });
+    });
+    itemsRoot.querySelectorAll(".cart-item-remove").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        removeFromCart(btn.dataset.id, btn.dataset.size);
+        renderCartPage();
+      });
+    });
+
+    document.getElementById("checkout-btn").addEventListener("click", () => {
+      document.getElementById("confirm-box").classList.add("show");
+      document.getElementById("checkout-btn").setAttribute("disabled", "true");
+    });
+  }
+
+  renderCartPage();
+</script>
+</body>
+</html>
